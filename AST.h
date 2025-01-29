@@ -1,8 +1,9 @@
+#pragma once
+
 #include <stddef.h>
 
 struct Program {
-  struct Declaration* dclrs;
-  size_t size;
+  struct DeclarationList* dclrs;
 };
 
 enum StorageClass {
@@ -54,9 +55,8 @@ struct VariableDclr {
 
 struct FunctionDclr {
   struct Slice* name;
-  size_t num_params;
   enum StorageClass storage;
-  struct VariableDclr* params;
+  struct ParamList* params;
   struct Block* body;
 };
 
@@ -65,14 +65,19 @@ union DeclareVariant {
   struct FunctionDclr fun_dclr;
 };
 
+struct ParamList {
+  struct VariableDclr param;
+  struct ParamList* next;
+};
+
 struct Declaration {
   union DeclareVariant dclr;
   enum DclrType type;
 };
 
-struct Block {
-  struct BlockItem* items;
-  size_t num_items;
+struct DeclarationList {
+  struct Declaration dclr;
+  struct DeclarationList* next;
 };
 
 enum ExprType {
@@ -185,8 +190,7 @@ struct VarExpr {
 
 struct FunctionCallExpr {
   struct Slice* func_name;
-  size_t num_args;
-  struct Expr* args;
+  struct ArgList* args;
 };
 
 struct CastExpr {
@@ -219,6 +223,11 @@ union ExprVariant {
 struct Expr {
   enum ExprType type;
   union ExprVariant expr;
+};
+
+struct ArgList {
+  struct Expr arg;
+  struct ArgList* next;
 };
 
 enum StatementType {
@@ -314,8 +323,7 @@ struct SwitchStmt {
   struct Expr* condition;
   struct Statement* Statement;
   struct Slice* label;
-  size_t num_cases;
-  struct CaseLabel* cases;
+  struct CaseList* cases;
 };
 
 struct CaseStmt {
@@ -369,6 +377,11 @@ struct BlockItem {
   enum BlockItemType type;
 };
 
+struct Block {
+  struct BlockItem item;
+  struct Block* next;
+};
+
 enum CaseLabelType {
   INT_CASE,
   DEFAULT_CASE
@@ -377,6 +390,11 @@ enum CaseLabelType {
 struct CaseLabel {
   enum CaseLabelType type;
   int* data;
+};
+
+struct CaseList {
+  struct CaseLabel case_label;
+  struct CaseList* next;
 };
 
 enum DeclaratorType {

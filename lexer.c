@@ -12,12 +12,12 @@
 static char const * program;
 static char const * current;
 
-void print_error() {
+static void print_error() {
   printf("lexer failed at offset %ld\n", (size_t)(current-program));
   printf("%s\n",current);
 }
 
-bool is_at_end() {
+static bool is_at_end() {
   while (isspace(*current)) {
     current += 1;
   }
@@ -25,13 +25,13 @@ bool is_at_end() {
   else return true;
 }
 
-void skip() {
+static void skip() {
   while (isspace(*current)) {
     current += 1;
   }
 }
 
-bool consume(const char* str) {
+static bool consume(const char* str) {
   skip();
   size_t i = 0;
   while (true) {
@@ -50,7 +50,7 @@ bool consume(const char* str) {
   } 
 }
 
-bool consume_keyword(const char* str) {
+static bool consume_keyword(const char* str) {
   skip();
   size_t i = 0;
   while (true) {
@@ -75,7 +75,7 @@ bool consume_keyword(const char* str) {
   } 
 }
 
-bool consume_identifier(struct Token* token) {
+static bool consume_identifier(struct Token* token) {
   skip();
   if (isalpha(*current)) {
     char const * start = current;
@@ -95,7 +95,7 @@ bool consume_identifier(struct Token* token) {
   }
 }
 
-bool consume_literal(struct Token* token) {
+static bool consume_literal(struct Token* token) {
   skip();
   if (isdigit(*current)) {
     uint64_t v = 0;
@@ -113,7 +113,7 @@ bool consume_literal(struct Token* token) {
 }
 
 // consumes any token
-struct Token* consume_any(){
+static struct Token* consume_any(){
   struct Token* token = malloc(sizeof(struct Token));
 
   if (consume_keyword("return")) { token->type = RETURN_TOK; return token; }

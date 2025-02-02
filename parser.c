@@ -254,7 +254,7 @@ static unsigned get_prec(enum BinOp op){
 }
 
 struct Expr* parse_bin_expr(unsigned min_prec){
-  struct Expr* lhs = parse_unary();
+  struct Expr* lhs = parse_factor();
 
   if (lhs == NULL) return NULL;
 
@@ -267,7 +267,6 @@ struct Expr* parse_bin_expr(unsigned min_prec){
     struct Expr* rhs = parse_bin_expr(prec + 1);
 
     if (rhs == NULL){
-      //throw new InvalidQueryException("Expected query after binary operator");
       print_error();
       return NULL;
     }
@@ -291,7 +290,7 @@ struct Expr* parse_expr_test(struct TokenArray* arr){
   program = arr->tokens;
   current = program;
   prog_size = arr->size;
-  return parse_unary();
+  return parse_expr();
 }
 
 struct Declaration* parse_dclr(){

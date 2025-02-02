@@ -2,6 +2,8 @@
 
 #include <stddef.h>
 
+// TODO: add type fields to every expr struct
+
 struct Program {
   struct DeclarationList* dclrs;
 };
@@ -22,8 +24,7 @@ enum TypeType {
 };
 
 struct FunType {
-  size_t num_params;
-  struct Type* param_types;
+  struct ParamTypeList* param_types;
   struct Type* return_type;
 };
 
@@ -42,6 +43,10 @@ struct Type {
   union TypeVariant type_data;
 };
 
+struct ParamTypeList {
+  struct Type type;
+  struct ParamTypeList* next;
+};
 
 enum DclrType {
   VAR_DCLR,
@@ -116,7 +121,7 @@ enum BinOp {
   ASSIGN_OP,
   PLUS_EQ_OP,
   MINUS_EQ_OP,
-  TIMES_EQ_OP,
+  MUL_EQ_OP,
   DIV_EQ_OP,
   MOD_EQ_OP,
   AND_EQ_OP,
@@ -128,7 +133,7 @@ enum BinOp {
 };
 
 enum UnOp {
-  COMPLEMENT,
+  COMPLEMENT = 1,
   NEGATE,
   BOOL_NOT
 };
@@ -168,7 +173,7 @@ enum ConstType {
 };
 
 union ConstVariant {
-  int int_val;
+  int int_val; // yeah this is probably redundant but whatever
   unsigned uint_val;
   long long_val;
   unsigned long ulong_val;
@@ -449,3 +454,57 @@ enum TypeSpecifier {
   SINT_SPEC,
   LONG_SPEC
 };
+
+void print_expr(struct Expr* expr);
+
+void print_bin_expr(struct BinaryExpr* expr);
+
+void print_un_expr(struct UnaryExpr* expr);
+
+void print_assign_expr(struct AssignExpr* expr);
+
+void print_post_assign_expr(struct PostAssignExpr* expr);
+
+void print_conditional_expr(struct ConditionalExpr* expr);
+
+void print_lit_expr(struct LitExpr* expr);
+
+void print_var_expr(struct VarExpr* expr);
+
+void print_fun_call_expr(struct FunctionCallExpr* expr);
+
+void print_cast_expr(struct CastExpr* expr);
+
+void print_addr_of_expr(struct AddrOfExpr* expr);
+
+void print_dereference_expr(struct DereferenceExpr* expr);
+
+void print_type(struct Type* type);
+
+
+
+void destroy_expr(struct Expr* expr);
+
+void destroy_bin_expr(struct BinaryExpr* expr);
+
+void destroy_un_expr(struct UnaryExpr* expr);
+
+void destroy_assign_expr(struct AssignExpr* expr);
+
+void destroy_post_assign_expr(struct PostAssignExpr* expr);
+
+void destroy_conditional_expr(struct ConditionalExpr* expr);
+
+void destroy_lit_expr(struct LitExpr* expr);
+
+void destroy_var_expr(struct VarExpr* expr);
+
+void destroy_fun_call_expr(struct FunctionCallExpr* expr);
+
+void destroy_cast_expr(struct CastExpr* expr);
+
+void destroy_addr_of_expr(struct AddrOfExpr* expr);
+
+void destroy_dereference_expr(struct DereferenceExpr* expr);
+
+void destroy_type(struct Type* type);

@@ -7,6 +7,7 @@
 #include "preprocessor.h"
 #include "token_array.h"
 #include "lexer.h"
+#include "parser.h"
 
 int main(int argc, const char *const *const argv) {
 
@@ -50,7 +51,15 @@ int main(int argc, const char *const *const argv) {
 
     print_token_array(tokens);
 
+    printf("\n");
+
+    struct Expr* expr = parse_expr_test(tokens);
     destroy_token_array(tokens);
+    if (expr == NULL) return 2; 
+
+    print_expr(expr);
+    printf("\n");
+    destroy_expr(expr);
 
     free(preprocessed);
     

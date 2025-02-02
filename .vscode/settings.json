@@ -2,6 +2,7 @@
   "files.associations": {
     "token_array.h": "c",
     "stdlib.h": "c",
-    "stdio.h": "c"
+    "stdio.h": "c",
+    "lexer.h": "c"
   }
 }

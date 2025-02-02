@@ -44,7 +44,5 @@ char * preprocess(char const* prog){
   // include null terminator
   end:  result[result_index] = 0;
 
-  printf("%s\n", result);
-
   return result;
 }

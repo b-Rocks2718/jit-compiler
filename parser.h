@@ -12,3 +12,5 @@ struct Expr* parse_unary();
 struct Expr* parse_bin_expr();
 
 struct Expr* parse_factor();
+
+struct Expr* parse_var();

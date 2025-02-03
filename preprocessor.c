@@ -13,7 +13,7 @@ char * preprocess(char const* prog){
   char * result = malloc(sizeof(char) * capacity);
 
   while (prog[prog_index] != 0){
-    if (result_index == capacity) {
+    if (result_index == capacity - 1) { // leave room for null terminator
       // resize
       result = realloc(result, 2 * capacity);
       capacity = 2 * capacity;

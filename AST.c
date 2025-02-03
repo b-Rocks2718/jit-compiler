@@ -306,7 +306,7 @@ void destroy_expr(struct Expr* expr){
       destroy_lit_expr(&expr->expr.lit_expr);
       break;
     case VAR:
-      print_var_expr(&expr->expr.var_expr);
+      destroy_var_expr(&expr->expr.var_expr);
       break;
     case FUNCTION_CALL:
       destroy_fun_call_expr(&expr->expr.fun_call_expr);
@@ -339,7 +339,7 @@ void destroy_assign_expr(struct AssignExpr* expr){
 }
 
 void destroy_post_assign_expr(struct PostAssignExpr* expr){
-
+  destroy_expr(expr->expr);
 }
 
 void destroy_conditional_expr(struct ConditionalExpr* expr){

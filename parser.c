@@ -16,8 +16,7 @@ static void print_error() {
 }
 
 static bool consume(const enum TokenType expected) {
-  struct Token const found = *current;
-  if (expected == found.type) {
+  if (current - program < prog_size && expected == current->type) {
     current++;
     return true;
   } else {
@@ -26,8 +25,7 @@ static bool consume(const enum TokenType expected) {
 }
 
 static bool peek(const enum TokenType expected) {
-  struct Token const found = *current;
-  if (expected == found.type) {
+  if (current - program < prog_size && expected == current->type) {
     return true;
   } else {
     return false;
@@ -35,7 +33,7 @@ static bool peek(const enum TokenType expected) {
 }
 
 static union TokenVariant* consume_with_data(const enum TokenType expected) {
-  if (expected == current->type) {
+  if (current - program < prog_size && expected == current->type) {
     current++;
     return &((current - 1)->data);
   } else {
@@ -82,41 +80,158 @@ static enum BinOp consume_binary_op(){
   return 0;
 }
 
-struct Expr* parse_pre_op(){
-
+struct Expr* parse_paren_var(){
+  struct Expr* expr;
+  if (expr = parse_var()) return expr;
+  else if (consume(OPEN_P)){
+    const struct Token* old_current = current - 1;
+    struct Expr* inner = parse_paren_var();
+    if (inner == NULL) {
+      current = old_current;
+      return NULL;
+    } else if (!consume(CLOSE_P)){
+      current = old_current;
+      destroy_expr(inner);
+      return NULL;
+    }
+    return inner;
+  } else return NULL;
 }
 
+struct Expr* parse_pre_op(){
+  if (consume(INC_TOK)){
+    struct Expr* inner = parse_paren_var();
+    if (inner == NULL) {
+      current--;
+      return NULL;
+    }
+    union ConstVariant const_data = {.int_val = 1};
+    struct LitExpr one = {INT_CONST, const_data};
+    struct Expr* lit_expr = malloc(sizeof(struct Expr));
+    lit_expr->type = LIT;
+    lit_expr->expr.lit_expr = one;
+
+    struct BinaryExpr add_one = {PLUS_EQ_OP, inner, lit_expr};
+
+    struct Expr* result = malloc(sizeof(struct Expr));
+    result->type = BINARY;
+    result->expr.bin_expr = add_one;
+    return result;
+  } else if (consume(DEC_TOK)){
+    struct Expr* inner = parse_paren_var();
+    if (inner == NULL) {
+      current--;
+      return NULL;
+    }
+    union ConstVariant const_data = {.int_val = 1};
+    struct LitExpr one = {INT_CONST, const_data};
+    struct Expr* lit_expr = malloc(sizeof(struct Expr));
+    lit_expr->type = LIT;
+    lit_expr->expr.lit_expr = one;
+
+    struct BinaryExpr sub_one = {MINUS_EQ_OP, inner, lit_expr};
+
+    struct Expr* result = malloc(sizeof(struct Expr));
+    result->type = BINARY;
+    result->expr.bin_expr = sub_one;
+    return result;
+  } else {
+    return NULL;
+  }
+}
+
+struct Expr* parse_var(){
+  union TokenVariant* data;
+  if (data = consume_with_data(IDENT)){
+    struct VarExpr var_expr = { data->ident_name };
+
+    struct Expr* expr = malloc(sizeof(struct Expr));
+    expr->expr.var_expr = var_expr;
+    expr->type = VAR;
+    return expr;
+  } else return NULL;
+}
+
+/*
+parseCast :: Parser Token Expr
+parseCast = do
+  _ <- char OpenP
+  baseType <- parseParamType
+  declarator <- parseAbstractDeclarator
+  _ <- char CloseP
+  expr <- parseExpr
+  let derivedType = processAbstractDeclarator declarator baseType
+  return (Cast derivedType expr)
+*/
 struct Expr* parse_cast(){
   
 }
 
 struct Expr* parse_post_op(){
-  
+  struct Token* old_current = current;
+  struct Expr* inner;
+  if (inner = parse_paren_var()){
+    if (consume(INC_TOK)){
+      struct PostAssignExpr add_one = {POST_INC, inner};
+      struct Expr* result = malloc(sizeof(struct Expr));
+      result->type = POST_ASSIGN;
+      result->expr.post_assign_expr = add_one;
+      return result;
+    } else if (consume(DEC_TOK)){
+      struct PostAssignExpr sub_one = {POST_DEC, inner};
+      struct Expr* result = malloc(sizeof(struct Expr));
+      result->type = POST_ASSIGN;
+      result->expr.post_assign_expr = sub_one;
+      return result;
+    } else {
+      current = old_current;
+      destroy_expr(inner);
+      return NULL;
+    }
+  } else return NULL;
 }
 
 struct Expr* parse_parens(){
-  
+  if (consume(OPEN_P)){
+    const struct Token* old_current = current - 1;
+    struct Expr* inner = parse_expr();
+    if (inner == NULL) {
+      current = old_current;
+      return NULL;
+    } else if (!consume(CLOSE_P)){
+      current = old_current;
+      destroy_expr(inner);
+      return NULL;
+    }
+    return inner;
+  } else {
+    return NULL;
+  }
 }
 
+/*
+parseArg :: Parser Token Expr
+parseArg = parseExpr <* (char Comma <|> char CloseP)
+*/
+struct ArgList* parse_args(){
+
+}
+
+/*
+ liftA2 FunctionCall (identName <$> satisfy isIdent)
+                (char OpenP *> ([] <$ char CloseP <|> some parseArg)) <|>
+*/
 struct Expr* parse_func_call(){
   
 }
 
-/*
-liftA2 Unary
-  (getUnaryOp <$> satisfy isUnaryOp)
-  parseFactor <|>
-  parsePreIncDec <|>
-  char Ampersand *> (AddrOf <$> parseExpr) <|>
-  char Asterisk *> (Dereference <$> (parseUnary <|> parseVar))
-*/
-
 struct Expr* parse_unary(){
   enum UnOp op;
   if (op = consume_unary_op()){
+    const struct Token* old_current = current;
     struct Expr* inner = parse_factor();
     if (inner == NULL) {
-      current--;
+      current = old_current - 1;
       return NULL;
     }
     struct UnaryExpr expr = {op, inner};
@@ -129,22 +244,38 @@ struct Expr* parse_unary(){
   struct Expr* expr;
   if (expr = parse_pre_op()){
     return expr;
-  } 
-  // Dereference and AddrOf, need "expect()" function
-  //else if (){
-  //
-  //} else if (){
-  //   
-  //}
+  } else if (consume(ASTERISK)){ 
+    const struct Token* old_current = current - 1;
+    struct Expr* inner = parse_expr();
+    if (inner == NULL) {
+      current = old_current;
+      return NULL;
+    }
+    struct DereferenceExpr expr = {inner};
+    struct Expr* result = malloc(sizeof(struct Expr));
+    result->expr.deref_expr = expr;
+    result->type = DEREFERENCE;
+    return result;
+  } else if (consume(AMPERSAND)){
+    const struct Token* old_current = current - 1;
+    struct Expr* inner = parse_expr();
+    if (inner == NULL) {
+      current = old_current;
+      return NULL;
+    }
+    struct AddrOfExpr expr = {inner};
+    struct Expr* result = malloc(sizeof(struct Expr));
+    result->expr.addr_of_expr = expr;
+    result->type = ADDR_OF;
+    return result;
+  }
   return NULL;
 }
 
 struct Expr* parse_factor(){
   union TokenVariant* data;
   if (data = consume_with_data(INT_LIT)){
-    union ConstVariant const_data;
-    const_data.int_val = data->int_val;
-
+    union ConstVariant const_data = {.int_val = data->int_val};
     struct LitExpr lit_expr = {INT_CONST, const_data};
 
     struct Expr* expr = malloc(sizeof(struct Expr));
@@ -152,41 +283,28 @@ struct Expr* parse_factor(){
     expr->type = LIT;
     return expr;
   } else if (data = consume_with_data(U_INT_LIT)){
-    union ConstVariant const_data;
-    const_data.uint_val = data->uint_val;
-
+    union ConstVariant const_data = {.uint_val = data->uint_val};
     struct LitExpr lit_expr = {UINT_CONST, const_data};
 
-    struct Expr* expr = malloc(sizeof(struct Expr*));
+    struct Expr* expr = malloc(sizeof(struct Expr));
     expr->expr.lit_expr = lit_expr;
     expr->type = LIT;
     return expr;
   } else if (data = consume_with_data(LONG_LIT)){
-    union ConstVariant const_data;
-    const_data.long_val = data->long_val;
-
+    union ConstVariant const_data  = {.long_val = data->long_val};
     struct LitExpr lit_expr = {LONG_CONST, const_data};
 
-    struct Expr* expr = malloc(sizeof(struct Expr*));
+    struct Expr* expr = malloc(sizeof(struct Expr));
     expr->expr.lit_expr = lit_expr;
     expr->type = LIT;
     return expr;
   } else if (data = consume_with_data(U_LONG_LIT)){
-    union ConstVariant const_data;
-    const_data.ulong_val = data->ulong_val;
-
+    union ConstVariant const_data = {.ulong_val = data->ulong_val};
     struct LitExpr lit_expr = {U_LONG_LIT, const_data};
 
-    struct Expr* expr = malloc(sizeof(struct Expr*));
+    struct Expr* expr = malloc(sizeof(struct Expr));
     expr->expr.lit_expr = lit_expr;
     expr->type = LIT;
-    return expr;
-  } else if (data = consume_with_data(IDENT)){
-    struct VarExpr var_expr = { data->ident_name };
-
-    struct Expr* expr = malloc(sizeof(struct Expr*));
-    expr->expr.var_expr = var_expr;
-    expr->type = VAR;
     return expr;
   }
   
@@ -200,6 +318,8 @@ struct Expr* parse_factor(){
   } else if (expr = parse_parens()){
     return expr;
   } else if (expr = parse_func_call()){
+    return expr;
+  } else if (expr = parse_var()){
     return expr;
   } else {
     return NULL;
@@ -260,23 +380,30 @@ struct Expr* parse_bin_expr(unsigned min_prec){
 
   while (current - program < prog_size){ 
     enum BinOp op = consume_binary_op();
+
+    if (op == 0) {
+      return lhs; 
+    } 
+
     unsigned prec = get_prec(op);
 
-    if (prec < min_prec) break; // stop expansion if a lower precedence operator is encountered
+    if (prec < min_prec) {
+      current--;
+      break; // stop expansion if a lower precedence operator is encountered
+    }
 
     struct Expr* rhs = parse_bin_expr(prec + 1);
 
     if (rhs == NULL){
-      print_error();
+      current--;
+      destroy_expr(lhs);
       return NULL;
     }
 
-    union ExprVariant expr_union;
     struct BinaryExpr bin_expr = {op, lhs, rhs};
-    expr_union.bin_expr = bin_expr;
     lhs = malloc(sizeof(struct Expr));
     lhs->type = BINARY;
-    lhs->expr = expr_union;
+    lhs->expr.bin_expr = bin_expr;
   }
 
   return lhs;
@@ -290,7 +417,17 @@ struct Expr* parse_expr_test(struct TokenArray* arr){
   program = arr->tokens;
   current = program;
   prog_size = arr->size;
-  return parse_expr();
+  struct Expr* result = parse_expr();
+  if (result == NULL) {
+    print_error();
+    return NULL;
+  }
+  if (current - program != prog_size) {
+    print_error();
+    destroy_expr(result);
+    return NULL;
+  }
+  return result;
 }
 
 struct Declaration* parse_dclr(){

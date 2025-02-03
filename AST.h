@@ -100,7 +100,7 @@ enum ExprType {
 };
 
 enum BinOp {
-  ADD_OP,
+  ADD_OP = 1,
   SUB_OP,
   MUL_OP,
   DIV_OP,
@@ -449,7 +449,7 @@ struct AbstractDeclarator {
 };
 
 enum TypeSpecifier {
-  INT_SPEC,
+  INT_SPEC = 1,
   UINT_SPEC,
   SINT_SPEC,
   LONG_SPEC

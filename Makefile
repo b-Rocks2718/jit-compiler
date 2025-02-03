@@ -9,7 +9,7 @@ $(EXEC): $(OBJFILES)
 	$(CC) $(CFLAGS) -o $(EXEC) $(OBJFILES)
 
 # Rule to generate .o files from .c files
-%.o: %.c
+%.o: %.c %.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Rule to clean up generated files

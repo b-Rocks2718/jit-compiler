@@ -47,20 +47,27 @@ int main(int argc, const char *const *const argv) {
     char* preprocessed = preprocess(prog);
 
     struct TokenArray* tokens = lex(preprocessed);
-    if (tokens == NULL) return 1;
+    if (tokens == NULL) {
+       free(preprocessed);
+       return 1;
+    }
 
     print_token_array(tokens);
 
     printf("\n");
 
     struct Expr* expr = parse_expr_test(tokens);
-    destroy_token_array(tokens);
-    if (expr == NULL) return 2; 
+    if (expr == NULL) {
+       free(preprocessed);
+       destroy_token_array(tokens);
+       return 2;
+    }; 
 
     print_expr(expr);
     printf("\n");
-    destroy_expr(expr);
 
+    destroy_expr(expr);
+    destroy_token_array(tokens);
     free(preprocessed);
     
     return 0;

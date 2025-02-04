@@ -455,6 +455,11 @@ enum TypeSpecifier {
   LONG_SPEC
 };
 
+struct TypeSpecList {
+  enum TypeSpecifier spec;
+  struct TypeSpecList* next;
+};
+
 void print_expr(struct Expr* expr);
 
 void print_bin_expr(struct BinaryExpr* expr);
@@ -508,3 +513,5 @@ void destroy_addr_of_expr(struct AddrOfExpr* expr);
 void destroy_dereference_expr(struct DereferenceExpr* expr);
 
 void destroy_type(struct Type* type);
+
+void destroy_type_spec_list(struct TypeSpecList* specs);

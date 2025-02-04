@@ -193,11 +193,11 @@ void print_un_expr(struct UnaryExpr* un_expr){
 }
 
 void print_assign_expr(struct AssignExpr* assign_expr){
-  printf("Assign(");
+  printf("Assign(left=");
   print_expr(assign_expr->left);
-  printf(", ");
+  printf(", right=");
   print_expr(assign_expr->right);
-  printf(")");
+  printf(")end");
 }
 
 void print_post_assign_expr(struct PostAssignExpr* post_expr){
@@ -262,7 +262,7 @@ void print_fun_call_expr(struct FunctionCallExpr* fun_expr){
   print_slice(fun_expr->func_name);
   printf(", [");
   print_args_list(fun_expr->args);
-  printf(")]");
+  printf("])");
 }
 
 void print_cast_expr(struct CastExpr* cast_expr){
@@ -343,33 +343,63 @@ void destroy_post_assign_expr(struct PostAssignExpr* expr){
 }
 
 void destroy_conditional_expr(struct ConditionalExpr* expr){
-
+  destroy_expr(expr->condition);
+  destroy_expr(expr->left);
+  destroy_expr(expr->right);
 }
 
-void destroy_lit_expr(struct LitExpr* expr){
+void destroy_lit_expr(struct LitExpr* expr){}
 
-}
+void destroy_var_expr(struct VarExpr* expr){}
 
-void destroy_var_expr(struct VarExpr* expr){
-
+void destroy_arg_list(struct ArgList* args){
+  if (args->next != NULL) destroy_arg_list(args->next);
+  destroy_expr(&args->arg);
 }
 
 void destroy_fun_call_expr(struct FunctionCallExpr* expr){
-
+  if (expr->args != NULL) destroy_arg_list(expr->args);
 }
 
 void destroy_cast_expr(struct CastExpr* expr){
-
+  destroy_type(expr->target);
+  destroy_expr(expr->expr);
 }
 
 void destroy_addr_of_expr(struct AddrOfExpr* expr){
-
+  destroy_expr(expr->expr);
 }
 
 void destroy_dereference_expr(struct DereferenceExpr* expr){
+  destroy_expr(expr->expr);
+}
 
+void destroy_param_list(struct ParamTypeList* params){
+  if (params->next != NULL) free(params->next);
+  free(params);
 }
 
 void destroy_type(struct Type* type){
+  switch (type->type){
+    case INT_TYPE:
+    case LONG_TYPE:
+    case UINT_TYPE:
+    case ULONG_TYPE:
+      free(type);
+      break;
+    case POINTER_TYPE:
+      destroy_type(type->type_data.pointer_type.referenced_type);
+      free(type);
+      break;
+    case FUN_TYPE:
+      destroy_type(type->type_data.fun_type.return_type);
+      destroy_param_list(type->type_data.fun_type.param_types);
+      free(type);
+      break;
+  }
+}
 
+void destroy_type_spec_list(struct TypeSpecList* specs){
+  if (specs->next != NULL) destroy_type_spec_list(specs->next);
+  free(specs);
 }

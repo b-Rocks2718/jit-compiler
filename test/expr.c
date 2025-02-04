@@ -1,2 +1,2 @@
 
-((3 - 1) * uwzqbguyimn * v--)
+x = c ? y : z / x

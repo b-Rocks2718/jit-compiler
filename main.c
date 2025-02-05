@@ -52,21 +52,23 @@ int main(int argc, const char *const *const argv) {
        return 1;
     }
 
+    printf("\nTokens:\n");
     print_token_array(tokens);
 
     printf("\n");
 
-    struct Expr* expr = parse_expr_test(tokens);
-    if (expr == NULL) {
+    struct Statement* stmt = parse_test(tokens);
+    if (stmt == NULL) {
        free(preprocessed);
        destroy_token_array(tokens);
        return 2;
     }; 
 
-    print_expr(expr);
+    printf("AST:\n");
+    print_stmt(stmt, 0);
     printf("\n");
 
-    destroy_expr(expr);
+    destroy_stmt(stmt);
     destroy_token_array(tokens);
     free(preprocessed);
     

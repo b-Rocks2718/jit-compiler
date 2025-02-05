@@ -258,15 +258,6 @@ struct AbstractDeclarator* parse_abstract_declarator(){
   }
 }
 
-
-/*-- converts abstract declarators and base types into actual types
--- used for casts to pointer types
-processAbstractDeclarator :: AbstractDeclarator -> Type_ -> Type_
-processAbstractDeclarator decl baseType = case decl of
-  AbstractBase -> baseType
-  AbstractPointer d -> processAbstractDeclarator d (PointerType baseType)
-*/
-
 struct Type* process_abstract_declarator(
     struct AbstractDeclarator* declarator, 
     struct Type* base_type){
@@ -276,27 +267,15 @@ struct Type* process_abstract_declarator(
       result = base_type;
       break;
     case ABSTRACT_POINTER:
-      struct Type* ptr_type = malloc(sizeof(struct Type*));
+      struct Type* ptr_type = malloc(sizeof(struct Type));
       ptr_type->type = POINTER_TYPE;
       ptr_type->type_data.pointer_type.referenced_type = base_type;
       result = process_abstract_declarator(declarator->data, ptr_type);
       break;
   }
-  destroy_abstract_declarator(declarator);
   return result;
 }
 
-/*
-parseCast :: Parser Token Expr
-parseCast = do
-  _ <- char OpenP
-  baseType <- parseParamType
-  declarator <- parseAbstractDeclarator
-  _ <- char CloseP
-  expr <- parseExpr
-  let derivedType = processAbstractDeclarator declarator baseType
-  return (Cast derivedType expr)
-*/
 struct Expr* parse_cast(){
   struct Token* old_current = current;
   if (!consume(OPEN_P)) return NULL;
@@ -316,6 +295,7 @@ struct Expr* parse_cast(){
     return NULL;
   }
   struct Type* derived_type = process_abstract_declarator(declarator, base_type);
+  destroy_abstract_declarator(declarator);
 
   struct CastExpr cast = {derived_type, expr};
   struct Expr* result = malloc(sizeof(struct Expr));
@@ -494,21 +474,13 @@ struct Expr* parse_factor(){
   }
   
   struct Expr* expr;
-  if ((expr = parse_cast())){
-    return expr;
-  } else if ((expr = parse_unary())){
-    return expr;
-  } else if ((expr = parse_post_op())){
-    return expr;
-  } else if ((expr = parse_parens())){
-    return expr;
-  } else if ((expr = parse_func_call())){
-    return expr;
-  } else if ((expr = parse_var())){
-    return expr;
-  } else {
-    return NULL;
-  }
+  if ((expr = parse_cast())) return expr;
+  else if ((expr = parse_unary())) return expr;
+  else if ((expr = parse_post_op())) return expr;
+  else if ((expr = parse_parens())) return expr;
+  else if ((expr = parse_func_call())) return expr;
+  else if ((expr = parse_var())) return expr;
+  else return NULL;
 }
 
 static unsigned get_prec(enum BinOp op){
@@ -635,18 +607,230 @@ struct Expr* parse_expr(){
   return parse_bin_expr(0);
 }
 
-struct Expr* parse_expr_test(struct TokenArray* arr){
+/*
+parseStmt :: Parser Token Stmt
+parseStmt =
+  liftA2 RetStmt (char ReturnTok *> parseExpr <* char Semi) (pure Nothing) <|>
+  ExprStmt <$> (parseExpr <* char Semi) <|>
+  liftA3 IfStmt
+    (char IfTok *> char OpenP *> parseExpr <* char CloseP)
+    parseStmt (optional (char ElseTok *> parseStmt)) <|>
+  liftA2 LabeledStmt (identName <$> satisfy isIdent <* char Colon) parseStmt <|>
+  GoToStmt . identName <$> (char GoToTok *> satisfy isIdent <* char Semi) <|>
+  CompoundStmt <$> parseBlock <|>
+  BreakStmt Nothing <$ (char BreakTok <* char Semi) <|>
+  ContinueStmt Nothing <$ (char ContinueTok <* char Semi) <|>
+  char WhileTok *> liftA3 WhileStmt (char OpenP *> parseExpr <* char CloseP)
+    parseStmt (pure Nothing) <|>
+  char DoTok *> liftA3 DoWhileStmt parseStmt
+    (char WhileTok *> char OpenP *> parseExpr <* char CloseP <* char Semi) (pure Nothing) <|>
+  char ForTok *> lift5 ForStmt
+    (char OpenP *> parseForInit)
+    (optional parseExpr <* char Semi)
+    (optional parseExpr <* char CloseP)
+    parseStmt (pure Nothing) <|>
+  char SwitchTok *> lift4 SwitchStmt (char OpenP *> parseExpr <* char CloseP)
+    parseStmt (pure Nothing) (pure Nothing) <|>
+  char CaseTok *> liftA3 CaseStmt (parseExpr <* char Colon) parseStmt (pure Nothing) <|>
+  char DefaultTok *> char Colon *> liftA2 DefaultStmt parseStmt (pure Nothing) <|>
+  NullStmt <$ char Semi
+*/
+
+struct Statement* parse_return_stmt(){
+  struct Token* old_current = current;
+  if (!consume(RETURN_TOK)) return NULL;
+  struct Expr* expr = parse_expr();
+  if (expr == NULL){
+    current = old_current;
+    return NULL;
+  }
+  if (!consume(SEMI)){
+    destroy_expr(expr);
+    current = old_current;
+    return NULL;
+  }
+  struct ReturnStmt ret_stmt = {expr, NULL};
+  struct Statement* result = malloc(sizeof(struct Statement));
+  result->type = RETURN_STMT;
+  result->statement.ret_stmt = ret_stmt;
+  return result;
+}
+
+struct Statement* parse_expr_stmt(){
+  struct Token* old_current = current;
+  struct Expr* expr = parse_expr();
+  if (expr == NULL) return NULL;
+  if (!consume(SEMI)){
+    destroy_expr(expr);
+    current = old_current;
+    return NULL;
+  }
+  struct ExprStmt expr_stmt = {expr};
+  struct Statement* result = malloc(sizeof(struct Statement));
+  result->type = EXPR_STMT;
+  result->statement.expr_stmt = expr_stmt;
+  return result;
+}
+
+struct Statement* parse_if_stmt(){
+  return NULL;
+}
+
+struct Statement* parse_labeled_stmt(){
+  return NULL;
+}
+
+struct Statement* parse_goto_stmt(){
+  if (!consume(GOTO_TOK)) return NULL;
+  struct Token* old_current = current;
+  union TokenVariant* data;
+  if ((data = consume_with_data(IDENT)) && consume(SEMI)){
+    struct GotoStmt goto_stmt = { data->ident_name };
+
+    struct Statement* result = malloc(sizeof(struct Statement));
+    result->type = GOTO_STMT;
+    result->statement.goto_stmt = goto_stmt;
+    return result;
+  } else {
+    current = old_current;
+    return NULL; 
+  }
+}
+
+struct Statement* parse_compound_stmt(){
+  return NULL;
+}
+
+struct Statement* parse_break_stmt(){
+  struct Token* old_current = current;
+  if (consume(BREAK_TOK) && consume(SEMI)){
+    struct BreakStmt break_stmt = {NULL};
+    struct Statement* result = malloc(sizeof(struct Statement));
+    result->type = BREAK_STMT;
+    result->statement.break_stmt = break_stmt;
+    return result;
+  } else {
+    current = old_current;
+    return NULL;
+  }
+}
+
+struct Statement* parse_continue_stmt(){
+  struct Token* old_current = current;
+  if (consume(CONTINUE_TOK) && consume(SEMI)){
+    struct ContinueStmt continue_stmt = {NULL};
+    struct Statement* result = malloc(sizeof(struct Statement));
+    result->type = CONTINUE_STMT;
+    result->statement.continue_stmt = continue_stmt;
+    return result;
+  } else {
+    current = old_current;
+    return NULL;
+  }
+}
+
+struct Statement* parse_while_stmt(){
+  return NULL;
+}
+
+struct Statement* parse_do_while_stmt(){
+  return NULL;
+}
+
+struct Statement* parse_for_stmt(){
+  return NULL;
+}
+
+struct Statement* parse_switch_stmt(){
+  return NULL;
+}
+
+struct Statement* parse_case_stmt(){
+  struct Token* old_current = current;
+  if (!consume(CASE_TOK)) return NULL;
+  struct Expr* expr = parse_expr();
+  if (expr == NULL){
+    current = old_current;
+    return NULL;
+  }
+  if (!consume(COLON)){
+    destroy_expr(expr);
+    current = old_current;
+    return NULL;
+  }
+  struct Statement* stmt = parse_statement();
+  if (stmt == NULL){
+    current = old_current;
+    return NULL;
+  }
+  struct CaseStmt case_stmt = {expr, stmt, NULL};
+  struct Statement* result = malloc(sizeof(struct Statement));
+  result->type = CASE_STMT;
+  result->statement.case_stmt = case_stmt;
+  return result;
+}
+
+struct Statement* parse_default_stmt(){
+  struct Token* old_current = current;
+  if (!consume(DEFAULT_TOK)) return NULL;
+  if (!consume(COLON)){
+    current = old_current;
+    return NULL;
+  }
+  struct Statement* stmt = parse_statement();
+  if (stmt == NULL){
+    current = old_current;
+    return NULL;
+  }
+  struct DefaultStmt default_stmt = {stmt, NULL};
+  struct Statement* result = malloc(sizeof(struct Statement));
+  result->type = DEFAULT_STMT;
+  result->statement.default_stmt = default_stmt;
+  return result;
+}
+
+struct Statement* parse_null_stmt(){
+  if (consume(SEMI)){
+    struct NullStmt null_stmt;
+    struct Statement* result = malloc(sizeof(struct Statement));
+    result->type = NULL_STMT;
+    result->statement.null_stmt = null_stmt;
+    return result;
+  } else return NULL;
+}
+
+struct Statement* parse_statement(){
+  struct Statement* stmt;
+  if ((stmt = parse_return_stmt())) return stmt;
+  else if ((stmt = parse_expr_stmt())) return stmt;
+  else if ((stmt = parse_if_stmt())) return stmt;
+  else if ((stmt = parse_labeled_stmt())) return stmt;
+  else if ((stmt = parse_goto_stmt())) return stmt;
+  else if ((stmt = parse_compound_stmt())) return stmt;
+  else if ((stmt = parse_break_stmt())) return stmt;
+  else if ((stmt = parse_continue_stmt())) return stmt;
+  else if ((stmt = parse_while_stmt())) return stmt;
+  else if ((stmt = parse_do_while_stmt())) return stmt;
+  else if ((stmt = parse_for_stmt())) return stmt;
+  else if ((stmt = parse_switch_stmt())) return stmt;
+  else if ((stmt = parse_case_stmt())) return stmt;
+  else if ((stmt = parse_default_stmt())) return stmt;
+  else if ((stmt = parse_null_stmt())) return stmt;
+  else return NULL;
+}
+
+struct Statement* parse_test(struct TokenArray* arr){
   program = arr->tokens;
   current = program;
   prog_size = arr->size;
-  struct Expr* result = parse_expr();
+  struct Statement* result = parse_statement();
   if (result == NULL) {
     print_error();
     return NULL;
   }
   if (current - program != prog_size) {
     print_error();
-    destroy_expr(result);
+    destroy_stmt(result);
     return NULL;
   }
   return result;

@@ -4,6 +4,12 @@
 #include "AST.h"
 #include "slice.h"
 
+/* show instances */
+
+void print_tabs(unsigned tabs) {
+  for (int i = 0; i < tabs; ++i) printf("    ");
+}
+
 void print_param_type_list(struct ParamTypeList* type_list){
   if (type_list == NULL) return;
   print_type(&type_list->type);
@@ -285,6 +291,184 @@ void print_dereference_expr(struct DereferenceExpr* expr){
   printf(")");
 }
 
+void print_block_item(struct BlockItem item){
+
+}
+
+void print_block(struct Block* block){
+  printf("Block");
+  print_block_item(block->item);
+  if (block->next != NULL) print_block(block->next);
+}
+
+void print_for_init(struct ForInit* for_init){
+  switch (for_init->type){
+    case DCLR_INIT:
+      print_declaration(&for_init->init.dclr_init);
+    case EXPR_INIT:
+      print_expr(&for_init->init.expr_init);
+  }
+}
+
+void print_case_list(struct CaseList* case_list){
+  if (case_list == NULL) return;
+  switch (case_list->case_label.type){
+    case INT_CASE:
+      printf("IntCase %d", case_list->case_label.data);
+    case DEFAULT_CASE:
+      printf("DefaultCase");
+  }
+  printf(", ");
+  print_case_list(case_list->next);
+}
+
+void print_return_stmt(struct ReturnStmt* ret_stmt, unsigned tabs){
+  printf("Return(");
+  print_expr(ret_stmt->expr);
+  if (ret_stmt->func != NULL){
+    printf(", ");
+    print_slice(ret_stmt->func);
+  }
+  printf(");\n");
+}
+
+void print_expr_stmt(struct ExprStmt* expr_stmt, unsigned tabs){
+  printf("ExprStmt("); print_expr(expr_stmt->expr); printf(");\n");
+}
+
+void print_if_stmt(struct IfStmt* if_stmt, unsigned tabs){
+  printf("IfStmt(\n");
+  print_tabs(tabs + 1); print_expr(if_stmt->condition); printf(", \n");
+  print_stmt(if_stmt->if_stmt, tabs + 1); printf(", \n");
+  print_stmt(if_stmt->else_stmt, tabs + 1); printf(", \n");
+  print_tabs(tabs); printf(");\n");
+}
+
+void print_goto_stmt(struct GotoStmt* goto_stmt, unsigned tabs){
+  printf("GotoStmt("); print_slice(goto_stmt->label); printf(");\n");
+}
+
+void print_labeled_stmt(struct LabeledStmt* labeled_stmt, unsigned tabs){
+  printf("LabeledStmt(");
+}
+
+void print_compound_stmt(struct CompoundStmt* compound_stmt, unsigned tabs){
+  printf("CompoundStmt(");
+}
+
+void print_break_stmt(struct BreakStmt* break_stmt, unsigned tabs){
+  printf("BreakStmt(label=");
+  if (break_stmt->label == NULL) printf("null");
+  else print_slice(break_stmt->label);
+  printf(");\n");
+}
+
+void print_continue_stmt(struct ContinueStmt* continue_stmt, unsigned tabs){
+  printf("ContinueStmt(label=");
+  if (continue_stmt->label == NULL) printf("null");
+  else print_slice(continue_stmt->label);
+  printf(");\n");
+}
+
+void print_while_stmt(struct WhileStmt* while_stmt, unsigned tabs){
+  printf("WhileStmt(");
+}
+
+void print_do_while_stmt(struct DoWhileStmt* do_while_stmt, unsigned tabs){
+  printf("DoWhileStmt(");
+}
+
+void print_for_stmt(struct ForStmt* for_stmt, unsigned tabs){
+  if (for_stmt->init != NULL) destroy_for_init(for_stmt->init);
+  if (for_stmt->condition != NULL) destroy_expr(for_stmt->condition);
+  if (for_stmt->end != NULL) destroy_expr(for_stmt->end);
+  destroy_stmt(for_stmt->statement);
+}
+
+void print_switch_stmt(struct SwitchStmt* switch_stmt, unsigned tabs){
+  printf("SwitchStmt(\n");
+  print_tabs(tabs + 1); printf("label="); 
+  if (switch_stmt->label == NULL) printf("null"); 
+  else print_slice(switch_stmt->label);
+  printf("\n");
+  print_tabs(tabs + 1); printf("cases=["); print_case_list(switch_stmt->cases); printf("]\n");
+  print_tabs(tabs + 1); print_expr(switch_stmt->condition); printf(",\n");
+  print_stmt(switch_stmt->statement, tabs + 1);
+  print_tabs(tabs); printf(");\n");
+}
+
+void print_case_stmt(struct CaseStmt* case_stmt, unsigned tabs){
+  printf("CaseStmt(\n"); 
+  print_tabs(tabs + 1); print_expr(case_stmt->expr); printf(",\n");
+  print_stmt(case_stmt->statement, tabs + 1);
+  print_tabs(tabs); printf(");\n");
+}
+
+void print_default_stmt(struct DefaultStmt* default_stmt, unsigned tabs){
+  printf("DefaultStmt(\n");
+  print_stmt(default_stmt->statement, tabs + 1);
+  print_tabs(tabs); printf(");\n");
+}
+
+void print_null_stmt(struct NullStmt* null_stmt, unsigned tabs){
+  printf("NullStmt;\n");
+}
+
+void print_stmt(struct Statement* stmt, unsigned tabs){
+  print_tabs(tabs);
+  switch (stmt->type){
+    case RETURN_STMT:
+      print_return_stmt(&stmt->statement.ret_stmt, tabs);
+      break;
+    case EXPR_STMT:
+      print_expr_stmt(&stmt->statement.expr_stmt, tabs); 
+      break;
+    case IF_STMT:
+      print_if_stmt(&stmt->statement.if_stmt, tabs);
+      break;
+    case GOTO_STMT:
+      print_goto_stmt(&stmt->statement.goto_stmt, tabs);
+      break;
+    case LABELED_STMT:
+      print_labeled_stmt(&stmt->statement.labeled_stmt, tabs);
+      break;
+    case COMPOUND_STMT:
+      print_compound_stmt(&stmt->statement.compound_stmt, tabs);
+      break;
+    case BREAK_STMT:
+      print_break_stmt(&stmt->statement.break_stmt, tabs);
+      break;
+    case CONTINUE_STMT:
+      print_continue_stmt(&stmt->statement.continue_stmt, tabs);
+      break;
+    case WHILE_STMT:
+      print_while_stmt(&stmt->statement.while_stmt, tabs);
+      break;
+    case DO_WHILE_STMT:
+      print_do_while_stmt(&stmt->statement.do_while_stmt, tabs);
+      break;
+    case FOR_STMT:
+      print_for_stmt(&stmt->statement.for_stmt, tabs);
+      break;
+    case SWITCH_STMT:
+      print_switch_stmt(&stmt->statement.switch_stmt, tabs);
+      break;
+    case CASE_STMT:
+      print_case_stmt(&stmt->statement.case_stmt, tabs);
+      break;
+    case DEFAULT_STMT:
+      print_default_stmt(&stmt->statement.default_stmt, tabs);
+      break;
+    case NULL_STMT:
+      print_null_stmt(&stmt->statement.null_stmt, tabs);
+      break;
+  }
+}
+
+/*-------------------------------------------------------------------------------------------------------*/
+
+/* destructors */
+
 void destroy_expr(struct Expr* expr){
   switch (expr->type){
     case BINARY:
@@ -410,4 +594,135 @@ void destroy_abstract_declarator(struct AbstractDeclarator* declarator){
     destroy_abstract_declarator(declarator->data);
     free(declarator);
   }
+}
+
+void destroy_block(struct Block* block){
+  if (block->next != NULL) destroy_block(block->next);
+  free(block);
+}
+
+void destroy_for_init(struct ForInit* for_init){
+  free(for_init);
+}
+
+void destroy_case_list(struct CaseList* case_list){
+  if (case_list->next != NULL) destroy_case_list(case_list->next);
+  free(case_list);
+}
+
+void destroy_return_stmt(struct ReturnStmt* ret_stmt){
+  destroy_expr(ret_stmt->expr);
+}
+
+void destroy_expr_stmt(struct ExprStmt* expr_stmt){
+  destroy_expr(expr_stmt->expr);
+}
+
+void destroy_if_stmt(struct IfStmt* if_stmt){
+  destroy_expr(if_stmt->condition);
+  destroy_stmt(if_stmt->if_stmt);
+  destroy_stmt(if_stmt->else_stmt);
+}
+
+void destroy_goto_stmt(struct GotoStmt* goto_stmt){}
+
+void destroy_labeled_stmt(struct LabeledStmt* labeled_stmt){
+  destroy_stmt(labeled_stmt->stmt);
+}
+
+void destroy_compound_stmt(struct CompoundStmt* compound_stmt){
+  destroy_block(compound_stmt->block);
+}
+
+void destroy_break_stmt(struct BreakStmt* break_stmt){}
+
+void destroy_continue_stmt(struct ContinueStmt* continue_stmt){}
+
+void destroy_while_stmt(struct WhileStmt* while_stmt){
+  destroy_expr(while_stmt->condition);
+  destroy_stmt(while_stmt->statement);
+}
+
+void destroy_do_while_stmt(struct DoWhileStmt* do_while_stmt){
+  destroy_stmt(do_while_stmt->statement);
+  destroy_expr(do_while_stmt->condition);
+}
+
+void destroy_for_stmt(struct ForStmt* for_stmt){
+  if (for_stmt->init != NULL) destroy_for_init(for_stmt->init);
+  if (for_stmt->condition != NULL) destroy_expr(for_stmt->condition);
+  if (for_stmt->end != NULL) destroy_expr(for_stmt->end);
+  destroy_stmt(for_stmt->statement);
+}
+
+void destroy_switch_stmt(struct SwitchStmt* switch_stmt){
+  destroy_expr(switch_stmt->condition);
+  destroy_stmt(switch_stmt->statement);
+  destroy_case_list(switch_stmt->cases);
+}
+
+void destroy_case_stmt(struct CaseStmt* case_stmt){
+  destroy_expr(case_stmt->expr);
+  destroy_stmt(case_stmt->statement);
+}
+
+void destroy_default_stmt(struct DefaultStmt* default_stmt){
+  destroy_stmt(default_stmt->statement);
+}
+
+void destroy_null_stmt(struct NullStmt* null_stmt){}
+
+void destroy_stmt(struct Statement* stmt){
+  switch (stmt->type){
+    case RETURN_STMT:
+      destroy_return_stmt(&stmt->statement.ret_stmt);
+      break;
+    case EXPR_STMT:
+      destroy_expr_stmt(&stmt->statement.expr_stmt); 
+      break;
+    case IF_STMT:
+      destroy_if_stmt(&stmt->statement.if_stmt);
+      break;
+    case GOTO_STMT:
+      destroy_goto_stmt(&stmt->statement.goto_stmt);
+      break;
+    case LABELED_STMT:
+      destroy_labeled_stmt(&stmt->statement.labeled_stmt);
+      break;
+    case COMPOUND_STMT:
+      destroy_compound_stmt(&stmt->statement.compound_stmt);
+      break;
+    case BREAK_STMT:
+      destroy_break_stmt(&stmt->statement.break_stmt);
+      break;
+    case CONTINUE_STMT:
+      destroy_continue_stmt(&stmt->statement.continue_stmt);
+      break;
+    case WHILE_STMT:
+      destroy_while_stmt(&stmt->statement.while_stmt);
+      break;
+    case DO_WHILE_STMT:
+      destroy_do_while_stmt(&stmt->statement.do_while_stmt);
+      break;
+    case FOR_STMT:
+      destroy_for_stmt(&stmt->statement.for_stmt);
+      break;
+    case SWITCH_STMT:
+      destroy_switch_stmt(&stmt->statement.switch_stmt);
+      break;
+    case CASE_STMT:
+      destroy_case_stmt(&stmt->statement.case_stmt);
+      break;
+    case DEFAULT_STMT:
+      destroy_default_stmt(&stmt->statement.default_stmt);
+      break;
+    case NULL_STMT:
+      destroy_null_stmt(&stmt->statement.null_stmt);
+      break;
+  }
+  free(stmt);
+}
+
+void print_declaration(struct Declaration* declaration){
+  
 }

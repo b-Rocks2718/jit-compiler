@@ -1,1 +1,1 @@
-x = (int)x;
+goto test;

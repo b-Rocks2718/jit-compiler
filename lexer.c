@@ -123,6 +123,7 @@ static struct Token* consume_any(){
   if (consume_keyword("do")) { token->type = DO_TOK; return token; }
   if (consume_keyword("while")) { token->type = WHILE_TOK; return token; }
   if (consume_keyword("for")) { token->type = FOR_TOK; return token; }
+  if (consume_keyword("goto")) { token->type = GOTO_TOK; return token; }
   if (consume_keyword("break")) { token->type = BREAK_TOK; return token; }
   if (consume_keyword("continue")) { token->type = CONTINUE_TOK; return token; }
   if (consume_keyword("static")) { token->type = STATIC_TOK; return token; }

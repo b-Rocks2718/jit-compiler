@@ -3,7 +3,9 @@
 #include "AST.h"
 #include "token_array.h"
 
-struct Expr* parse_expr_test(struct TokenArray* arr);
+struct Statement* parse_test(struct TokenArray* arr);
+
+struct Statement* parse_statement();
 
 struct Expr* parse_expr();
 

@@ -4,6 +4,8 @@
 
 // TODO: add type fields to every expr struct
 
+/* AST data structures */
+
 struct Program {
   struct DeclarationList* dclrs;
 };
@@ -314,19 +316,19 @@ enum ForInitType {
   EXPR_INIT,
 };  
 
-struct ForInit {
-  enum ForInitType type;
-  union ForInitVariant* init;
-};
-
 union ForInitVariant {
   struct Declaration dclr_init;
   struct Expr expr_init;
 };
 
+struct ForInit {
+  enum ForInitType type;
+  union ForInitVariant init;
+};
+
 struct SwitchStmt {
   struct Expr* condition;
-  struct Statement* Statement;
+  struct Statement* statement;
   struct Slice* label;
   struct CaseList* cases;
 };
@@ -394,7 +396,7 @@ enum CaseLabelType {
 
 struct CaseLabel {
   enum CaseLabelType type;
-  int* data;
+  int data;
 };
 
 struct CaseList {
@@ -460,6 +462,10 @@ struct TypeSpecList {
   struct TypeSpecList* next;
 };
 
+/*-------------------------------------------------------------------------------------------------------*/
+
+/* show instances */
+
 void print_expr(struct Expr* expr);
 
 void print_bin_expr(struct BinaryExpr* expr);
@@ -486,7 +492,13 @@ void print_dereference_expr(struct DereferenceExpr* expr);
 
 void print_type(struct Type* type);
 
+void print_stmt(struct Statement* stmt, unsigned tabs);
 
+void print_declaration(struct Declaration* declaration);
+
+/*-------------------------------------------------------------------------------------------------------*/
+
+/* destructors */
 
 void destroy_expr(struct Expr* expr);
 
@@ -517,3 +529,7 @@ void destroy_type(struct Type* type);
 void destroy_type_spec_list(struct TypeSpecList* specs);
 
 void destroy_abstract_declarator(struct AbstractDeclarator* declarator);
+
+void destroy_stmt(struct Statement* stmt);
+
+void destroy_for_init(struct ForInit* for_init);

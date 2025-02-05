@@ -14,3 +14,5 @@ struct Expr* parse_bin_expr();
 struct Expr* parse_factor();
 
 struct Expr* parse_var();
+
+struct AbstractDeclarator* parse_abstract_declarator();

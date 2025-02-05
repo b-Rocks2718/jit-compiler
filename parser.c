@@ -44,7 +44,7 @@ static enum BinOp consume_binary_op(){
   if (consume(PLUS)) return ADD_OP;
   if (consume(MINUS)) return SUB_OP;
   if (consume(ASTERISK)) return MUL_OP;
-  if (consume(SLASH)) return DIV_EQ;
+  if (consume(SLASH)) return DIV_OP;
   if (consume(PERCENT)) return MOD_OP;
   if (consume(AMPERSAND)) return BIT_AND;
   if (consume(PIPE)) return BIT_OR;
@@ -224,6 +224,68 @@ struct Type* parse_param_type(){
   }
 }
 
+struct AbstractDeclarator* parse_direct_abstract_declarator(){
+  struct Token* old_current = current;
+  if (!consume(OPEN_P)) return NULL;
+  struct AbstractDeclarator* declarator = parse_abstract_declarator();
+  if (declarator == NULL || !consume(CLOSE_P)){
+    current = old_current;
+    return NULL;
+  }
+  return declarator;
+}
+
+struct AbstractDeclarator* parse_abstract_declarator(){
+  struct Token* old_current = current;
+  if (consume(ASTERISK)){
+    struct AbstractDeclarator* declarator = parse_abstract_declarator();
+    if (declarator == NULL){
+      current = old_current;
+      return NULL;
+    }
+    struct AbstractDeclarator* result = malloc(sizeof(struct AbstractDeclarator));
+    result->type = ABSTRACT_POINTER;
+    result->data = declarator;
+    return result;
+  }
+  struct AbstractDeclarator* declarator = parse_direct_abstract_declarator();
+  if (declarator != NULL){
+    return declarator;
+  } else {
+    struct AbstractDeclarator* declarator = malloc(sizeof(struct AbstractDeclarator));
+    declarator->type = ABSTRACT_BASE;
+    return declarator;
+  }
+}
+
+
+/*-- converts abstract declarators and base types into actual types
+-- used for casts to pointer types
+processAbstractDeclarator :: AbstractDeclarator -> Type_ -> Type_
+processAbstractDeclarator decl baseType = case decl of
+  AbstractBase -> baseType
+  AbstractPointer d -> processAbstractDeclarator d (PointerType baseType)
+*/
+
+struct Type* process_abstract_declarator(
+    struct AbstractDeclarator* declarator, 
+    struct Type* base_type){
+  struct Type* result;
+  switch (declarator->type){
+    case ABSTRACT_BASE:
+      result = base_type;
+      break;
+    case ABSTRACT_POINTER:
+      struct Type* ptr_type = malloc(sizeof(struct Type*));
+      ptr_type->type = POINTER_TYPE;
+      ptr_type->type_data.pointer_type.referenced_type = base_type;
+      result = process_abstract_declarator(declarator->data, ptr_type);
+      break;
+  }
+  destroy_abstract_declarator(declarator);
+  return result;
+}
+
 /*
 parseCast :: Parser Token Expr
 parseCast = do
@@ -238,7 +300,28 @@ parseCast = do
 struct Expr* parse_cast(){
   struct Token* old_current = current;
   if (!consume(OPEN_P)) return NULL;
+  struct Type* base_type = parse_param_type();
+  if (base_type == NULL){
+    current = old_current;
+    return NULL;
+  }
+  struct AbstractDeclarator* declarator = parse_abstract_declarator();
+  if (declarator == NULL || !consume(CLOSE_P)){
+    current = old_current;
+    return NULL;
+  }
+  struct Expr* expr = parse_expr();
+  if (expr == NULL){
+    current = old_current;
+    return NULL;
+  }
+  struct Type* derived_type = process_abstract_declarator(declarator, base_type);
 
+  struct CastExpr cast = {derived_type, expr};
+  struct Expr* result = malloc(sizeof(struct Expr));
+  result->type = CAST;
+  result->expr.cast_expr = cast;
+  return result;
 }
 
 struct Expr* parse_post_op(){
@@ -411,9 +494,9 @@ struct Expr* parse_factor(){
   }
   
   struct Expr* expr;
-  if ((expr = parse_unary())){
+  if ((expr = parse_cast())){
     return expr;
-  } else if ((expr = parse_cast())){
+  } else if ((expr = parse_unary())){
     return expr;
   } else if ((expr = parse_post_op())){
     return expr;
@@ -522,8 +605,8 @@ struct Expr* parse_bin_expr(unsigned min_prec){
       continue;
     }
 
-    // assignment is right-associative, everything else is left-associative
-    unsigned next_prec = (op == ASSIGN_OP) ? prec : prec + 1;
+    // assignment/compound ops are right-associative, everything else is left-associative
+    unsigned next_prec = (ASSIGN_OP <= op && op <= SHR_EQ_OP) ? prec : prec + 1;
     struct Expr* rhs = parse_bin_expr(next_prec);
 
     if (rhs == NULL){
@@ -537,15 +620,7 @@ struct Expr* parse_bin_expr(unsigned min_prec){
       lhs = malloc(sizeof(struct Expr));
       lhs->type = ASSIGN;
       lhs->expr.assign_expr = assign_expr;
-    }
-    /*else if op `elem` compoundOps then do
-          right <- parseBin parseFactor nextPrec
-          return . Just $ Binary op left right
-        else if op == TernaryOp then do
-          middle <- parseExpr <* char Colon
-          right <- parseBin parseFactor nextPrec
-          return . Just $ Conditional left middle right*/
-    else {
+    } else {
       struct BinaryExpr bin_expr = {op, lhs, rhs};
       lhs = malloc(sizeof(struct Expr));
       lhs->type = BINARY;

@@ -515,3 +515,5 @@ void destroy_dereference_expr(struct DereferenceExpr* expr);
 void destroy_type(struct Type* type);
 
 void destroy_type_spec_list(struct TypeSpecList* specs);
+
+void destroy_abstract_declarator(struct AbstractDeclarator* declarator);

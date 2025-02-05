@@ -193,11 +193,11 @@ void print_un_expr(struct UnaryExpr* un_expr){
 }
 
 void print_assign_expr(struct AssignExpr* assign_expr){
-  printf("Assign(left=");
+  printf("Assign(");
   print_expr(assign_expr->left);
-  printf(", right=");
+  printf(", ");
   print_expr(assign_expr->right);
-  printf(")end");
+  printf(")");
 }
 
 void print_post_assign_expr(struct PostAssignExpr* post_expr){
@@ -402,4 +402,12 @@ void destroy_type(struct Type* type){
 void destroy_type_spec_list(struct TypeSpecList* specs){
   if (specs->next != NULL) destroy_type_spec_list(specs->next);
   free(specs);
+}
+
+void destroy_abstract_declarator(struct AbstractDeclarator* declarator){
+  if (declarator->type == ABSTRACT_BASE) free(declarator);
+  else {
+    destroy_abstract_declarator(declarator->data);
+    free(declarator);
+  }
 }

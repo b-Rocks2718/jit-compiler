@@ -392,8 +392,8 @@ struct Expr* parse_func_call(){
 
 struct Expr* parse_unary(){
   enum UnOp op;
+  struct Token* old_current = current;
   if ((op = consume_unary_op())){
-    struct Token* old_current = current;
     struct Expr* inner = parse_factor();
     if (inner == NULL) {
       current = old_current - 1;
@@ -533,6 +533,7 @@ static unsigned get_prec(enum BinOp op){
 
 // pratt parsing W
 struct Expr* parse_bin_expr(unsigned min_prec){
+  struct Token* old_current = current;
   struct Expr* lhs = parse_factor();
 
   if (lhs == NULL) return NULL;
@@ -552,7 +553,6 @@ struct Expr* parse_bin_expr(unsigned min_prec){
     }
 
     if (op == TERNARY_OP){
-      struct Token* old_current = current;
       struct Expr* middle = parse_expr();
       if (middle == NULL) {
         current = old_current;
@@ -673,7 +673,40 @@ struct Statement* parse_expr_stmt(){
 }
 
 struct Statement* parse_if_stmt(){
-  return NULL;
+  struct Token* old_current = current;
+  if (!consume(IF_TOK)) return NULL;
+  if (!consume(OPEN_P)){
+    current = old_current;
+    return NULL;
+  }
+  struct Expr* condition = parse_expr();
+  if (condition == NULL){
+    current = old_current;
+    return NULL;
+  }
+  if (!consume(CLOSE_P)) {
+    current = old_current;
+    return NULL;
+  }
+  struct Statement* left = parse_statement();
+  if (left == NULL) {
+    current = old_current;
+    return NULL;
+  }
+  struct IfStmt if_stmt = {condition, left, NULL};
+  struct Statement* result = malloc(sizeof(struct Statement));
+  result->type = IF_STMT;
+  result->statement.if_stmt = if_stmt;
+  old_current = current;
+  if (consume(ELSE_TOK)){
+    struct Statement* right = parse_statement();
+    if (right == NULL){
+      current = old_current;
+    } else {
+      result->statement.if_stmt.else_stmt = right;
+    }
+  }
+  return result;
 }
 
 struct Statement* parse_labeled_stmt(){
@@ -681,8 +714,8 @@ struct Statement* parse_labeled_stmt(){
 }
 
 struct Statement* parse_goto_stmt(){
-  if (!consume(GOTO_TOK)) return NULL;
   struct Token* old_current = current;
+  if (!consume(GOTO_TOK)) return NULL;
   union TokenVariant* data;
   if ((data = consume_with_data(IDENT)) && consume(SEMI)){
     struct GotoStmt goto_stmt = { data->ident_name };

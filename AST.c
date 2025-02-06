@@ -338,9 +338,13 @@ void print_expr_stmt(struct ExprStmt* expr_stmt, unsigned tabs){
 
 void print_if_stmt(struct IfStmt* if_stmt, unsigned tabs){
   printf("IfStmt(\n");
-  print_tabs(tabs + 1); print_expr(if_stmt->condition); printf(", \n");
-  print_stmt(if_stmt->if_stmt, tabs + 1); printf(", \n");
-  print_stmt(if_stmt->else_stmt, tabs + 1); printf(", \n");
+  print_tabs(tabs + 1); printf("c="); print_expr(if_stmt->condition); printf(", \n");
+  print_tabs(tabs + 1); printf("left=\n");
+  print_stmt(if_stmt->if_stmt, tabs + 2);
+  if (if_stmt->else_stmt != NULL) {
+    print_tabs(tabs + 1); printf("right=\n");
+    print_stmt(if_stmt->else_stmt, tabs + 2);
+  }
   print_tabs(tabs); printf(");\n");
 }
 
@@ -621,7 +625,7 @@ void destroy_expr_stmt(struct ExprStmt* expr_stmt){
 void destroy_if_stmt(struct IfStmt* if_stmt){
   destroy_expr(if_stmt->condition);
   destroy_stmt(if_stmt->if_stmt);
-  destroy_stmt(if_stmt->else_stmt);
+  if (if_stmt->else_stmt != NULL) destroy_stmt(if_stmt->else_stmt);
 }
 
 void destroy_goto_stmt(struct GotoStmt* goto_stmt){}

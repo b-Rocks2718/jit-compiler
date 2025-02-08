@@ -353,7 +353,10 @@ void print_goto_stmt(struct GotoStmt* goto_stmt, unsigned tabs){
 }
 
 void print_labeled_stmt(struct LabeledStmt* labeled_stmt, unsigned tabs){
-  printf("LabeledStmt(");
+  printf("LabeledStmt(\n");
+  print_tabs(tabs + 1); print_slice(labeled_stmt->label); printf(",\n");
+  print_stmt(labeled_stmt->stmt, tabs + 1);
+  print_tabs(tabs); printf(");\n"); 
 }
 
 void print_compound_stmt(struct CompoundStmt* compound_stmt, unsigned tabs){
@@ -375,18 +378,41 @@ void print_continue_stmt(struct ContinueStmt* continue_stmt, unsigned tabs){
 }
 
 void print_while_stmt(struct WhileStmt* while_stmt, unsigned tabs){
-  printf("WhileStmt(");
+  printf("WhileStmt(\n");
+  if (while_stmt->label != NULL){
+    print_tabs(tabs + 1); print_slice(while_stmt->label); printf(",\n");
+  } 
+  print_tabs(tabs + 1); print_expr(while_stmt->condition); printf(",\n");
+  print_stmt(while_stmt->statement, tabs + 1);
+  print_tabs(tabs); printf(");\n");
 }
 
 void print_do_while_stmt(struct DoWhileStmt* do_while_stmt, unsigned tabs){
-  printf("DoWhileStmt(");
+  printf("DoWhileStmt(\n");
+  if (do_while_stmt->label != NULL){
+    print_tabs(tabs + 1); print_slice(do_while_stmt->label); printf(",\n");
+  } 
+  print_stmt(do_while_stmt->statement, tabs + 1);
+  print_tabs(tabs + 1); print_expr(do_while_stmt->condition); printf(",\n");
+  print_tabs(tabs); printf(");\n");
 }
 
 void print_for_stmt(struct ForStmt* for_stmt, unsigned tabs){
-  if (for_stmt->init != NULL) destroy_for_init(for_stmt->init);
-  if (for_stmt->condition != NULL) destroy_expr(for_stmt->condition);
-  if (for_stmt->end != NULL) destroy_expr(for_stmt->end);
-  destroy_stmt(for_stmt->statement);
+  printf("ForStmt(\n");
+  if (for_stmt->label != NULL){
+    print_tabs(tabs + 1); print_slice(for_stmt->label); printf(",\n");
+  }
+  if (for_stmt->init != NULL){
+    print_tabs(tabs + 1); print_for_init(for_stmt->init); printf(",\n");
+  }
+  if (for_stmt->condition != NULL){
+    print_tabs(tabs + 1); print_expr(for_stmt->condition); printf(",\n");
+  }
+  if (for_stmt->end != NULL){
+    print_tabs(tabs + 1); print_expr(for_stmt->end); printf(",\n");
+  }
+  print_stmt(for_stmt->statement, tabs + 1);
+  print_tabs(tabs); printf(");\n");
 }
 
 void print_switch_stmt(struct SwitchStmt* switch_stmt, unsigned tabs){

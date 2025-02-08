@@ -710,7 +710,25 @@ struct Statement* parse_if_stmt(){
 }
 
 struct Statement* parse_labeled_stmt(){
-  return NULL;
+  struct Token* old_current = current;
+  union TokenVariant* data = consume_with_data(IDENT);
+  if (data == NULL) return NULL;
+  struct Slice* label = data->ident_name;
+  if (!consume(COLON)){
+    current = old_current;
+    return NULL;
+  }
+  struct Statement* stmt = parse_statement();
+  if (stmt == NULL){
+    current = old_current;
+    return NULL;
+  }
+
+  struct LabeledStmt labeled_stmt = {label, stmt};
+  struct Statement* result = malloc(sizeof(struct Statement));
+  result->type = LABELED_STMT;
+  result->statement.labeled_stmt = labeled_stmt;
+  return result;
 }
 
 struct Statement* parse_goto_stmt(){
@@ -763,15 +781,79 @@ struct Statement* parse_continue_stmt(){
 }
 
 struct Statement* parse_while_stmt(){
-  return NULL;
+  struct Token* old_current = current;
+  if (!consume(WHILE_TOK)) return NULL;
+  if (!consume(OPEN_P)){
+    current = old_current;
+    return NULL;
+  }
+  struct Expr* condition = parse_expr();
+  if (condition == NULL){
+    current = old_current;
+    return NULL;
+  }
+  if (!consume(CLOSE_P)){
+    current = old_current;
+    return NULL;
+  }
+  struct Statement* stmt = parse_statement();
+  if (stmt == NULL){
+    current = old_current;
+    return NULL;
+  }
+
+  struct WhileStmt while_stmt = {condition, stmt, NULL};
+  struct Statement* result = malloc(sizeof(struct Statement));
+  result->type = WHILE_STMT;
+  result->statement.while_stmt = while_stmt;
+  return result;
 }
 
 struct Statement* parse_do_while_stmt(){
-  return NULL;
+  struct Token* old_current = current;
+  if (!consume(DO_TOK)) return NULL;
+  struct Statement* stmt = parse_statement();
+  if (stmt == NULL){
+    current = old_current;
+    return NULL;
+  }
+  if (!consume(WHILE_TOK)){
+    current = old_current;
+    return NULL;
+  }
+  if (!consume(OPEN_P)){
+    current = old_current;
+    return NULL;
+  }
+  struct Expr* condition = parse_expr();
+  if (condition == NULL){
+    current = old_current;
+    return NULL;
+  }
+  if (!consume(CLOSE_P) || !consume(SEMI)){
+    current = old_current;
+    return NULL;
+  }
+
+  struct DoWhileStmt do_while_stmt = {stmt, condition, NULL};
+  struct Statement* result = malloc(sizeof(struct Statement));
+  result->type = DO_WHILE_STMT;
+  result->statement.do_while_stmt = do_while_stmt;
+  return result;
+}
+
+struct ForInit* parse_for_init(){
+  
 }
 
 struct Statement* parse_for_stmt(){
-  return NULL;
+  struct Token* old_current = current;
+  if (!consume(FOR_TOK)) return NULL;
+  if (!consume(OPEN_P)){
+    current = old_current;
+    return NULL;
+  }
+  struct ForInit* init = parse_for_init();
 }
 
 struct Statement* parse_switch_stmt(){
